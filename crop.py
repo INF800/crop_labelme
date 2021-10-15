@@ -9,16 +9,8 @@ def get_shapes(fpath):
     shapes = data["shapes"]
     return shapes
 
-def crop_shapes(shapes: list, crop_bbox: list):
-    """
-    shapes is a list of dicts where each dict has the following keys:
-    - label: str - name of the label
-    - points: list of lists - list of points with actual coordinates
-    - shape_type: str - type of the shape
+def crop_shapes(shapes: list, crop_bbox: list, zero_origin: bool):
 
-    image_width and image_height are the width and height of the image
-    crop_bbox is a list of 4 numbers representing the bounding box along which the annnotations inside the image are cropped
-    """
     def is_outside_crop_bbox(point, bbox):
         """
         point is a list of 2 numbers representing the x and y coordinates of a point
@@ -40,9 +32,13 @@ def crop_shapes(shapes: list, crop_bbox: list):
         cropped_points = []
         for point in shape["points"]:
             if not is_outside_crop_bbox(point, crop_bbox):
-                cropped_points.append(point)
+                new_point=point
             else:
                 new_point = clip_point(point, crop_bbox)
+            
+            if zero_origin:
+                cropped_points.append([new_point[0]-crop_bbox[0], new_point[1]-crop_bbox[1]])
+            else:
                 cropped_points.append(new_point)
 
         cropped_shapes.append({"label": shape["label"], "points": cropped_points, "shape_type": shape["shape_type"]})
@@ -78,17 +74,22 @@ def draw_shapes(shapes, im, bb_actual, show=False):
     return im
 
 if __name__ == "__main__":
+    ZERO_ORIGIN = True
     annot_path = '1_0000000104.json'
     image_path = '1_0000000104.JPG'
     
     im = Image.open(image_path)
-    bb_actual = [0.6*im.width, 
+    bb_actual = [0.1*im.width, 
                  0.05*im.height, 
-                 im.width-(1-0.9)*im.width, 
+                 im.width-(1-0.4)*im.width, 
                  im.height-(1-0.8)*im.height]
+    # bb_actual = [0.6*im.width, 
+    #              0.05*im.height, 
+    #              im.width-(1-0.9)*im.width, 
+    #              im.height-(1-0.8)*im.height]
 
     shapes_annot = get_shapes(annot_path)
-    shapes_crop = crop_shapes(shapes_annot, bb_actual)
+    shapes_crop = crop_shapes(shapes_annot, bb_actual, zero_origin=ZERO_ORIGIN)
     
     im = draw_shapes(shapes_crop, im, bb_actual)
     im.save("test.jpg")
